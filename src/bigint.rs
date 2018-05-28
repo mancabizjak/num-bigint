@@ -2538,6 +2538,38 @@ impl BigInt {
         };
         BigInt::from_biguint(sign, mag)
     }
+
+    /// Returns multiplicative inverse of `self` modulo `modulus`, if it
+    /// exists.
+    pub fn modinv(&self, modulus: &Self) -> BigInt {
+        assert_eq!(self.gcd(modulus), One::one(), "inverse does not exist");
+        assert!(!modulus.is_zero(), "divide by zero!");
+
+        // ExtendedGcd
+        // Input: positive integers b and N
+        // Output: integer u such that 1/b * u mod N = 1
+
+        // 1: (u, w) <- (1, 0)
+        let mut u: BigInt = One::one();
+        let mut w: BigInt = Zero::zero();
+        let mut b = self.clone();
+        let mut c = modulus.clone();
+        // 3: while b != 0
+        while !c.is_zero() {
+            // 4: (q, r) <- DivRem(a, b)
+            let q = &b / &c;
+            let r = &b % &c;
+            // 5: (a, b) <- (b, r)
+            b = c; c = r;
+            // 6: (u, w) <- (w, u - qw)
+            let m = u - &w*q;
+            u = w; w = m;
+        }
+
+        assert!(c.is_one(), "wrong inverse");
+
+        u
+    }
 }
 
 impl_sum_iter_type!(BigInt);
