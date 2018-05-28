@@ -2541,7 +2541,7 @@ impl BigInt {
 
     /// Returns multiplicative inverse of `self` modulo `modulus`, if it
     /// exists.
-    pub fn modinv(&self, modulus: &Self) -> BigInt {
+    pub fn modinv(&self, modulus: &Self) -> Self {
         assert_eq!(self.gcd(modulus), One::one(), "inverse does not exist");
         assert!(!modulus.is_zero(), "divide by zero!");
 
@@ -2569,6 +2569,23 @@ impl BigInt {
         assert!(c.is_one(), "wrong inverse");
 
         u
+    }
+
+    pub fn sqrt(&self) -> Self {
+        assert!(self.is_positive(), "number is negative or zero");
+
+        let m = self.clone();
+        let mut u = self.clone();
+        let s = self.clone();
+
+        while u >= s {
+            let s = u.clone();
+            let q = m.div_floor(&s);
+            let t = s + q;
+            u = t.div_floor(&BigInt::from(2));
+        }
+
+        s
     }
 }
 
