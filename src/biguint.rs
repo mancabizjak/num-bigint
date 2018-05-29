@@ -1749,6 +1749,34 @@ impl BigUint {
         }
         acc
     }
+
+    pub fn sqrt(&self) -> Self {
+        // trivial cases
+        if self.is_zero() {
+            return BigUint::zero();
+        }
+
+        if self.is_one() {
+            return BigUint::one();
+        }
+
+        // Adaptation of Newton's method to compute the square
+        // root of an integer.
+        let mut u = self.clone();
+        let mut s: BigUint;
+        let two = BigUint::from(2 as u8);
+
+        while {
+            s = u;
+            let q = self.div_floor(&s);
+            let t = &s + &q;
+            u = t.div_floor(&two);
+
+            u < s // condition for next iteration
+        } {}
+
+        s
+    }
 }
 
 /// Returns the number of least-significant bits that are zero,

@@ -2539,53 +2539,62 @@ impl BigInt {
         BigInt::from_biguint(sign, mag)
     }
 
-    /// Returns multiplicative inverse of `self` modulo `modulus`, if it
-    /// exists.
+   /// Returns modular multiplicative inverse of `self` modulo `modulus`,
+   /// if it exists.
+   ///
+   /// # Panics
+   /// If `modulus` is 0 or `self` and `modulus` are not coprime.
     pub fn modinv(&self, modulus: &Self) -> Self {
-        assert_eq!(self.gcd(modulus), One::one(), "inverse does not exist");
+        assert!(self.gcd(modulus).is_one(), "inverse is undefined");
         assert!(!modulus.is_zero(), "divide by zero!");
 
-        // ExtendedGcd
-        // Input: positive integers b and N
-        // Output: integer u such that 1/b * u mod N = 1
+       let mut n = self.clone().abs();
+       if self.is_negative() {
+           n %= modulus;
+       }
 
-        // 1: (u, w) <- (1, 0)
-        let mut u: BigInt = One::one();
-        let mut w: BigInt = Zero::zero();
-        let mut b = self.clone();
-        let mut c = modulus.clone();
-        // 3: while b != 0
-        while !c.is_zero() {
-            // 4: (q, r) <- DivRem(a, b)
-            let q = &b / &c;
-            let r = &b % &c;
-            // 5: (a, b) <- (b, r)
-            b = c; c = r;
-            // 6: (u, w) <- (w, u - qw)
-            let m = u - &w*q;
-            u = w; w = m;
+       // ExtendedGcd
+       // Input: positive integers b and N
+       // Output: integer u such that 1/b * u mod N = 1
+
+       // 1: (u, w) <- (1, 0)
+       let mut u: BigInt = One::one();
+       let mut w: BigInt = Zero::zero();
+
+       let mut c = modulus.clone();
+       // 3: while b != 0
+       while !c.is_zero() {
+           // 4: (q, r) <- DivRem(a, b)
+           let q = n.div_floor(&c); //&b / &c;
+           let r = &n % &c;
+           // 5: (a, b) <- (b, r)
+           n = c; c = r;
+           // 6: (u, w) <- (w, u - qw)
+           // TODO this fails on BigUint, since it can produce a negative result
+           // TODO make it work for BigUint.
+           let m = u - &w*q;
+           u = w; w = m;
+       }
+
+        if u.is_negative() {
+            u += modulus;
         }
 
-        assert!(c.is_one(), "wrong inverse");
+        // TODO remove the guard when you're sure its working
+        assert!(((self*&u) % modulus).is_one(), "wrong inverse - {} invmod {} is not {}", self, modulus, u);
 
         u
-    }
+   }
 
+    /// Finds integral square root of a non-negative integer `self`.
+    /// The result is floored to the nearest integer.
+    ///
+    /// # Panics
+    /// If `self` is a negative number.
     pub fn sqrt(&self) -> Self {
-        assert!(self.is_positive(), "number is negative or zero");
+        assert!(!self.is_negative(), "number is negative");
 
-        let m = self.clone();
-        let mut u = self.clone();
-        let s = self.clone();
-
-        while u >= s {
-            let s = u.clone();
-            let q = m.div_floor(&s);
-            let t = s + q;
-            u = t.div_floor(&BigInt::from(2));
-        }
-
-        s
+        BigInt::from_biguint(self.sign, self.data.sqrt())
     }
 }
 
@@ -2622,6 +2631,55 @@ fn twos_complement<'a, I>(digits: I)
     }
 }
 
+#[test]
+fn test_modinv() {
+    let a = BigInt::from(42);
+    let p = BigInt::from(2017);
+    assert_eq!(a.modinv(&p), BigInt::from(1969), "inverse is not working");
+
+    let a = BigInt::from(-51);
+    let p = BigInt::from(10);
+    assert_eq!(a.modinv(&p), BigInt::from(9), "inverse is not working");
+
+    let a = BigInt::from(17);
+    let p = BigInt::from(3120);
+    assert_eq!(a.modinv(&p), BigInt::from(2753), "inverse is not working");
+
+    /*let a = BigInt::from(151);
+    let p = BigInt::from(-7);
+    assert_eq!(a.modinv(&p), BigInt::from(-6), "inverse is not working");*/
+
+
+    // let a = BigInt::from(-25);
+    //let p = BigInt::from(7);
+    //assert_eq!(a.modinv(&p), BigInt::from(3), "inverse is not working");
+}
+#[test]
+#[should_panic]
+fn test_modinv_invalid() {
+    let a = BigInt::from(2);
+    let p = BigInt::from(6);
+    let _ = a.modinv(&p);
+}
+
+#[test]
+#[should_panic]
+fn test_sqrt_invalid() {
+    let a = BigInt::from(-10);
+    let _ = a.sqrt();
+}
+
+#[test]
+fn test_sqrt() {
+    let a = BigInt::from(10000);
+    assert_eq!(a.sqrt(), BigInt::from(100));
+    let a = BigInt::from(102);
+    assert_eq!(a.sqrt(), BigInt::from(10));
+    let a = BigInt::from(0);
+    assert_eq!(a.sqrt(), BigInt::zero());
+    let a = BigInt::from(1);
+    assert_eq!(a.sqrt(), BigInt::one());
+}
 
 #[test]
 fn test_from_biguint() {
