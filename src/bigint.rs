@@ -2586,11 +2586,12 @@ impl BigInt {
         u
    }
 
-    /// Finds integral square root of a non-negative integer `self`.
-    /// The result is floored to the nearest integer.
+    /// Finds square root of `self`.
     ///
-    /// # Panics
-    /// If `self` is a negative number.
+    /// The result is the greatest integer less than or equal to the
+    /// square root of `self`.
+    ///
+    /// Panics if `self` is a negative number.
     pub fn sqrt(&self) -> Self {
         assert!(!self.is_negative(), "number is negative");
 
