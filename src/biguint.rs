@@ -1855,6 +1855,7 @@ impl BigUint {
     pub fn nth_root(&self, n: u32) -> Self {
         Roots::nth_root(self, n)
     }
+
 }
 
 /// Returns the number of least-significant bits that are zero,

@@ -69,7 +69,7 @@ impl Mul<Sign> for Sign {
 #[cfg(feature = "serde")]
 impl serde::Serialize for Sign {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
+                    where S: serde::Serializer
     {
         // Note: do not change the serialization format, or it may break
         // forward and backward compatibility of serialized data!
@@ -84,7 +84,7 @@ impl serde::Serialize for Sign {
 #[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for Sign {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: serde::Deserializer<'de>
+                      where D: serde::Deserializer<'de>
     {
         use serde::de::Error;
         use serde::de::Unexpected;
@@ -302,7 +302,7 @@ fn bitand_neg_neg(a: &mut Vec<BigDigit>, b: &[BigDigit]) {
     }
     debug_assert!(a.len() > b.len() || carry_a == 0);
     debug_assert!(b.len() > a.len() || carry_b == 0);
-    if a.len() > b.len()  {
+    if a.len() > b.len() {
         for ai in a[b.len()..].iter_mut() {
             let twos_a = negate_carry(*ai, &mut carry_a);
             *ai = negate_carry(twos_a, &mut carry_and);
@@ -925,6 +925,7 @@ impl Add<BigDigit> for BigInt {
         }
     }
 }
+
 impl AddAssign<BigDigit> for BigInt {
     #[inline]
     fn add_assign(&mut self, other: BigDigit) {
@@ -950,6 +951,7 @@ impl Add<DoubleBigDigit> for BigInt {
         }
     }
 }
+
 impl AddAssign<DoubleBigDigit> for BigInt {
     #[inline]
     fn add_assign(&mut self, other: DoubleBigDigit) {
@@ -973,6 +975,7 @@ impl Add<i32> for BigInt {
         }
     }
 }
+
 impl AddAssign<i32> for BigInt {
     #[inline]
     fn add_assign(&mut self, other: i32) {
@@ -996,6 +999,7 @@ impl Add<i64> for BigInt {
         }
     }
 }
+
 impl AddAssign<i64> for BigInt {
     #[inline]
     fn add_assign(&mut self, other: i64) {
@@ -1101,6 +1105,7 @@ impl Sub<BigDigit> for BigInt {
         }
     }
 }
+
 impl SubAssign<BigDigit> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: BigDigit) {
@@ -1135,6 +1140,7 @@ impl Sub<DoubleBigDigit> for BigInt {
         }
     }
 }
+
 impl SubAssign<DoubleBigDigit> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: DoubleBigDigit) {
@@ -1167,6 +1173,7 @@ impl Sub<i32> for BigInt {
         }
     }
 }
+
 impl SubAssign<i32> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: i32) {
@@ -1203,6 +1210,7 @@ impl Sub<i64> for BigInt {
         }
     }
 }
+
 impl SubAssign<i64> for BigInt {
     #[inline]
     fn sub_assign(&mut self, other: i64) {
@@ -2073,7 +2081,7 @@ impl IntDigits for BigInt {
 #[cfg(feature = "serde")]
 impl serde::Serialize for BigInt {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: serde::Serializer
+                    where S: serde::Serializer
     {
         // Note: do not change the serialization format, or it may break
         // forward and backward compatibility of serialized data!
@@ -2084,7 +2092,7 @@ impl serde::Serialize for BigInt {
 #[cfg(feature = "serde")]
 impl<'de> serde::Deserialize<'de> for BigInt {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-        where D: serde::Deserializer<'de>
+                      where D: serde::Deserializer<'de>
     {
         let (sign, data) = serde::Deserialize::deserialize(deserializer)?;
         Ok(BigInt::from_biguint(sign, data))
@@ -2122,9 +2130,9 @@ impl biguint::ToBigUint for BigInt {
     #[inline]
     fn to_biguint(&self) -> Option<BigUint> {
         match self.sign() {
-            Plus    => Some(self.data.clone()),
-            NoSign  => Some(Zero::zero()),
-            Minus   => None,
+            Plus => Some(self.data.clone()),
+            NoSign => Some(Zero::zero()),
+            Minus => None,
         }
     }
 }
@@ -2575,6 +2583,53 @@ impl BigInt {
     pub fn nth_root(&self, n: u32) -> Self {
         Roots::nth_root(self, n)
     }
+
+    /// Returns modular multiplicative inverse of `self` modulo `modulus`,
+    /// if it exists.
+    ///
+    /// # Panics
+    /// If `modulus` is 0 or `self` and `modulus` are not coprime.
+    pub fn modinv(&self, modulus: &Self) -> Self {
+        assert!(self.gcd(modulus).is_one(), "inverse is undefined");
+        assert!(!modulus.is_zero(), "divide by zero!");
+
+        let mut n = self.clone().abs();
+        if self.is_negative() {
+            n %= modulus;
+        }
+
+        // ExtendedGcd
+        // Input: positive integers b and N
+        // Output: integer u such that 1/b * u mod N = 1
+
+        // 1: (u, w) <- (1, 0)
+        let mut u: BigInt = One::one();
+        let mut w: BigInt = Zero::zero();
+
+        let mut c = modulus.clone();
+        // 3: while b != 0
+        while !c.is_zero() {
+            // 4: (q, r) <- DivRem(a, b)
+            let q = n.div_floor(&c); //&b / &c;
+            let r = &n % &c;
+            // 5: (a, b) <- (b, r)
+            n = c; c = r;
+            // 6: (u, w) <- (w, u - qw)
+            // TODO this fails on BigUint, since it can produce a negative result
+            // TODO make it work for BigUint.
+            let m = u - &w*q;
+            u = w; w = m;
+        }
+
+        if u.is_negative() {
+            u += modulus;
+        }
+
+        // TODO remove the guard when you're sure its working
+        assert!(((self*&u) % modulus).is_one(), "wrong inverse - {} invmod {} is not {}", self, modulus, u);
+
+        u
+    }
 }
 
 impl_sum_iter_type!(BigInt);
@@ -2598,7 +2653,7 @@ fn twos_complement_be(digits: &mut [u8]) {
 /// starting from the least significant byte.
 #[inline]
 fn twos_complement<'a, I>(digits: I)
-    where I: IntoIterator<Item = &'a mut u8>
+                          where I: IntoIterator<Item=&'a mut u8>
 {
     let mut carry = true;
     for d in digits {
@@ -2609,7 +2664,6 @@ fn twos_complement<'a, I>(digits: I)
         }
     }
 }
-
 
 #[test]
 fn test_from_biguint() {

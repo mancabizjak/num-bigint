@@ -1092,3 +1092,29 @@ fn test_iter_product_generic() {
     assert_eq!(result, data.iter().product());
     assert_eq!(result, data.into_iter().product());
 }
+
+#[test]
+fn test_modinv() {
+    let a = BigInt::from(42);
+    let p = BigInt::from(2017);
+    assert_eq!(a.modinv(&p), BigInt::from(1969), "inverse is not working");
+    let a = BigInt::from(-51);
+    let p = BigInt::from(10);
+    assert_eq!(a.modinv(&p), BigInt::from(9), "inverse is not working");
+    let a = BigInt::from(17);
+    let p = BigInt::from(3120);
+    assert_eq!(a.modinv(&p), BigInt::from(2753), "inverse is not working");
+    /*let a = BigInt::from(151);
+   let p = BigInt::from(-7);
+   assert_eq!(a.modinv(&p), BigInt::from(-6), "inverse is not working");*/
+    // let a = BigInt::from(-25);
+    //let p = BigInt::from(7);
+    //assert_eq!(a.modinv(&p), BigInt::from(3), "inverse is not working");
+}
+#[test]
+#[should_panic]
+fn test_modinv_invalid() {
+    let a = BigInt::from(2);
+    let p = BigInt::from(6);
+    let _ = a.modinv(&p);
+}
